@@ -1,0 +1,405 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  USER
+  CREATOR
+  MODERATOR
+  ADMIN
+}
+
+enum SubscriptionTier {
+  FREE
+  STARTER
+  PRO
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  PAST_DUE
+  EXPIRED
+}
+
+enum CreditType {
+  WORLD_GENERATION
+  ENTITY_GENERATION
+  QUEST_GENERATION
+  NPC_DIALOGUE
+  TEXTURE_GENERATION
+}
+
+enum WorldStatus {
+  DRAFT
+  GENERATING
+  ACTIVE
+  ARCHIVED
+  DELETED
+}
+
+enum WorldVisibility {
+  PRIVATE
+  UNLISTED
+  PUBLIC
+}
+
+enum EntityType {
+  CREATURE
+  NPC
+  ITEM_DROP
+  INTERACTIVE
+}
+
+enum QuestType {
+  FETCH
+  KILL
+  ESCORT
+  EXPLORE
+  CRAFT
+  DIALOGUE
+  PUZZLE
+}
+
+enum QuestStatus {
+  ACTIVE
+  COMPLETED
+  FAILED
+}
+
+enum BiomeType {
+  OCEAN
+  BEACH
+  PLAINS
+  FOREST
+  DESERT
+  MOUNTAINS
+  SNOW
+  SWAMP
+  JUNGLE
+  SAVANNA
+}
+
+// ─── Models ──────────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  clerkId       String    @unique
+  email         String    @unique
+  username      String    @unique
+  displayName   String?
+  avatarUrl     String?
+  bio           String?
+  role          UserRole  @default(USER)
+  credits       Int       @default(100)
+  totalPlayTime Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastLoginAt   DateTime?
+
+  subscription   Subscription?
+  creditUsages   CreditUsage[]
+  worlds         World[]
+  gameSaves      GameSave[]
+  worldLikes     WorldLike[]
+  comments       Comment[]
+  followers      Follow[]         @relation("following")
+  following      Follow[]         @relation("follower")
+  dialogMessages DialogueMessage[]
+
+  @@index([clerkId])
+  @@index([email])
+  @@index([username])
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+}
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  userId               String             @unique
+  tier                 SubscriptionTier   @default(FREE)
+  status               SubscriptionStatus @default(ACTIVE)
+  stripeCustomerId     String?            @unique
+  stripeSubscriptionId String?            @unique
+  monthlyCredits       Int                @default(100)
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelledAt          DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([stripeCustomerId])
+}
+
+model CreditUsage {
+  id        String     @id @default(cuid())
+  userId    String
+  worldId   String?
+  type      CreditType
+  amount    Int
+  metadata  Json?
+  createdAt DateTime   @default(now())
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  world World? @relation(fields: [worldId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([worldId])
+  @@index([createdAt])
+}
+
+model World {
+  id              String          @id @default(cuid())
+  name            String
+  description     String          @db.Text
+  prompt          String          @db.Text
+  theme           String
+  status          WorldStatus     @default(DRAFT)
+  visibility      WorldVisibility @default(PRIVATE)
+  seed            Int
+  biomeScale      Float           @default(1.0)
+  heightScale     Float           @default(1.0)
+  seaLevel        Int             @default(62)
+  treeFrequency   Float           @default(0.05)
+  ambientColor    String          @default("#ffffff")
+  fogColor        String          @default("#c8d6e5")
+  fogDensity      Float           @default(0.002)
+  skyGradient     Json            @default("[]")
+  musicStyle      String          @default("ambient")
+  thumbnailUrl    String?
+  version         Int             @default(1)
+  playCount       Int             @default(0)
+  likeCount       Int             @default(0)
+  commentCount    Int             @default(0)
+  maxPlayers      Int             @default(8)
+  creatorId       String
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  publishedAt     DateTime?
+  generationMeta  Json?
+
+  creator      User          @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  chunks       Chunk[]
+  blockChanges BlockChange[]
+  entities     Entity[]
+  npcs         NPC[]
+  quests       Quest[]
+  gameSaves    GameSave[]
+  worldLikes   WorldLike[]
+  comments     Comment[]
+  creditUsages CreditUsage[]
+
+  @@index([creatorId])
+  @@index([status])
+  @@index([visibility])
+  @@index([createdAt])
+  @@index([likeCount])
+}
+
+model Chunk {
+  id        String   @id @default(cuid())
+  worldId   String
+  cx        Int
+  cz        Int
+  data      Bytes
+  heightmap Bytes
+  biomeMap  Bytes
+  lodLevel  Int      @default(0)
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  world World @relation(fields: [worldId], references: [id], onDelete: Cascade)
+
+  @@unique([worldId, cx, cz])
+  @@index([worldId])
+}
+
+model BlockChange {
+  id        String   @id @default(cuid())
+  worldId   String
+  x         Int
+  y         Int
+  z         Int
+  blockId   Int
+  prevBlock Int
+  playerId  String?
+  createdAt DateTime @default(now())
+
+  world World @relation(fields: [worldId], references: [id], onDelete: Cascade)
+
+  @@index([worldId])
+  @@index([worldId, x, y, z])
+}
+
+model Entity {
+  id         String     @id @default(cuid())
+  worldId    String
+  type       EntityType
+  name       String
+  positionX  Float
+  positionY  Float
+  positionZ  Float
+  rotationX  Float      @default(0)
+  rotationY  Float      @default(0)
+  rotationZ  Float      @default(0)
+  meshUrl    String
+  stats      Json?
+  metadata   Json?
+  isActive   Boolean    @default(true)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  world World @relation(fields: [worldId], references: [id], onDelete: Cascade)
+
+  @@index([worldId])
+  @@index([worldId, type])
+}
+
+model NPC {
+  id             String   @id @default(cuid())
+  worldId        String
+  entityId       String?
+  name           String
+  role           String
+  personality    String   @db.Text
+  backstory      String   @db.Text
+  knowledge      Json     @default("[]")
+  dialogueStyle  String   @default("neutral")
+  mood           Float    @default(0.5)
+  relationship   Float    @default(0.0)
+  systemPrompt   String?  @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  world            World             @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  dialogueMessages DialogueMessage[]
+
+  @@index([worldId])
+}
+
+model DialogueMessage {
+  id        String   @id @default(cuid())
+  npcId     String
+  userId    String
+  role      String
+  content   String   @db.Text
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  npc  NPC  @relation(fields: [npcId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([npcId])
+  @@index([userId])
+  @@index([npcId, createdAt])
+}
+
+model Quest {
+  id             String     @id @default(cuid())
+  worldId        String
+  giverId        String
+  title          String
+  description    String     @db.Text
+  type           QuestType
+  objectives     Json
+  rewards        Json
+  dialogue       Json
+  difficulty     Int        @default(1)
+  isMainQuest    Boolean    @default(false)
+  sortOrder      Int        @default(0)
+  prerequisiteId String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  world        World      @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  prerequisite Quest?     @relation("QuestPrerequisite", fields: [prerequisiteId], references: [id], onDelete: SetNull)
+  dependents   Quest[]    @relation("QuestPrerequisite")
+  gameSaves    GameSave[] @relation("GameSaveQuests")
+
+  @@index([worldId])
+  @@index([giverId])
+}
+
+model GameSave {
+  id            String      @id @default(cuid())
+  userId        String
+  worldId       String
+  positionX     Float       @default(0)
+  positionY     Float       @default(64)
+  positionZ     Float       @default(0)
+  rotationX     Float       @default(0)
+  rotationY     Float       @default(0)
+  rotationZ     Float       @default(0)
+  hp            Int         @default(100)
+  maxHp         Int         @default(100)
+  inventory     Json        @default("[]")
+  hotbarSlot    Int         @default(0)
+  playTime      Int         @default(0)
+  questProgress Json        @default("[]")
+  metadata      Json?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  world   World   @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  quests  Quest[] @relation("GameSaveQuests")
+
+  @@unique([userId, worldId])
+  @@index([userId])
+  @@index([worldId])
+}
+
+model WorldLike {
+  id        String   @id @default(cuid())
+  userId    String
+  worldId   String
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  world World @relation(fields: [worldId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, worldId])
+  @@index([worldId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  userId    String
+  worldId   String
+  content   String   @db.Text
+  parentId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  world    World     @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies  Comment[] @relation("CommentReplies")
+
+  @@index([worldId])
+  @@index([userId])
+  @@index([worldId, createdAt])
+}

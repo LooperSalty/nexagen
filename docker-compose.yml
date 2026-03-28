@@ -1,0 +1,127 @@
+version: "3.9"
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: tools/docker/Dockerfile.web
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      - api
+    networks:
+      - nexagen-network
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: tools/docker/Dockerfile.api
+    ports:
+      - "4000:4000"
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - redis
+      - minio
+    networks:
+      - nexagen-network
+    restart: unless-stopped
+
+  ai-terrain:
+    build:
+      context: .
+      dockerfile: tools/docker/Dockerfile.ai
+      args:
+        PORT: "5001"
+    ports:
+      - "5001:5001"
+    env_file:
+      - .env
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+    networks:
+      - nexagen-network
+    restart: unless-stopped
+
+  ai-creatures:
+    build:
+      context: .
+      dockerfile: tools/docker/Dockerfile.ai
+      args:
+        PORT: "5002"
+    ports:
+      - "5002:5002"
+    env_file:
+      - .env
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+    networks:
+      - nexagen-network
+    restart: unless-stopped
+
+  ai-narrative:
+    build:
+      context: .
+      dockerfile: tools/docker/Dockerfile.ai
+      args:
+        PORT: "5003"
+    ports:
+      - "5003:5003"
+    env_file:
+      - .env
+    networks:
+      - nexagen-network
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: nexagen
+      POSTGRES_PASSWORD: nexagen
+      POSTGRES_DB: nexagen
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - nexagen-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - nexagen-network
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio-data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - nexagen-network
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  minio-data:
+
+networks:
+  nexagen-network:
+    driver: bridge
