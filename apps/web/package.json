@@ -13,8 +13,8 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^6.9.0",
-    "@nexagen/db": "workspace:*",
-    "@nexagen/shared": "workspace:*",
+    "@nexagen/db": "*",
+    "@nexagen/shared": "*",
     "@react-three/drei": "^9.120.0",
     "@react-three/fiber": "^8.17.0",
     "@react-three/postprocessing": "^2.16.0",

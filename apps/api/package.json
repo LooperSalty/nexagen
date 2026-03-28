@@ -11,8 +11,8 @@
     "lint": "eslint src/"
   },
   "dependencies": {
-    "@nexagen/shared": "workspace:*",
-    "@nexagen/db": "workspace:*",
+    "@nexagen/shared": "*",
+    "@nexagen/db": "*",
     "@trpc/server": "^11.0.0",
     "@fastify/cors": "^10.0.0",
     "@fastify/websocket": "^11.0.0",
