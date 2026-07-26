@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { t, protectedProcedure } from '../router.js';
+import { t, protectedProcedure } from '../trpc.js';
 import { checkRateLimit, rateLimitKey } from '../../middleware/rateLimit.js';
 import { npcDialogue } from '../../lib/ai-client.js';
 

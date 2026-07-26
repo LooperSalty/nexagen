@@ -3,16 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch --ignore \"../../node_modules/**\" --env-file-if-exists=../../.env src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js",
+    "start": "node --env-file-if-exists=../../.env dist/index.js",
     "test": "vitest",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/"
   },
   "dependencies": {
-    "@nexagen/shared": "workspace:*",
-    "@nexagen/db": "workspace:*",
+    "@nexagen/shared": "*",
+    "@nexagen/db": "*",
     "@trpc/server": "^11.0.0",
     "@fastify/cors": "^10.0.0",
     "@fastify/websocket": "^11.0.0",

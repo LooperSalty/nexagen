@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { t, publicProcedure, protectedProcedure } from '../router.js';
+import { t, publicProcedure, protectedProcedure } from '../trpc.js';
 
 export const socialRouter = t.router({
   like: protectedProcedure

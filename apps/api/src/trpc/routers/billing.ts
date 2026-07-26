@@ -1,15 +1,10 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import Stripe from 'stripe';
-import { t, protectedProcedure } from '../router.js';
+import { t, protectedProcedure } from '../trpc.js';
+import { getStripe } from '../../lib/stripe.js';
 
-const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY ?? '';
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET ?? '';
 const APP_URL = process.env.APP_URL ?? 'http://localhost:3000';
-
-const stripe = new Stripe(STRIPE_SECRET_KEY, {
-  apiVersion: '2024-12-18.acacia',
-});
 
 const PRICE_IDS: Readonly<Record<string, string>> = {
   starter: process.env.STRIPE_STARTER_PRICE_ID ?? '',
@@ -45,7 +40,7 @@ export const billingRouter = t.router({
       let customerId = user.stripeCustomerId;
 
       if (!customerId) {
-        const customer = await stripe.customers.create({
+        const customer = await getStripe().customers.create({
           email: user.email ?? undefined,
           metadata: { userId: ctx.userId },
         });
@@ -57,7 +52,7 @@ export const billingRouter = t.router({
         });
       }
 
-      const session = await stripe.checkout.sessions.create({
+      const session = await getStripe().checkout.sessions.create({
         customer: customerId,
         mode: 'subscription',
         line_items: [{ price: priceId, quantity: 1 }],
@@ -98,7 +93,7 @@ export const billingRouter = t.router({
       });
     }
 
-    const session = await stripe.billingPortal.sessions.create({
+    const session = await getStripe().billingPortal.sessions.create({
       customer: user.stripeCustomerId,
       return_url: `${APP_URL}/billing`,
     });
@@ -130,7 +125,7 @@ export const billingRouter = t.router({
     }
 
     try {
-      const subscription = await stripe.subscriptions.retrieve(
+      const subscription = await getStripe().subscriptions.retrieve(
         user.stripeSubscriptionId,
       );
 
@@ -153,4 +148,4 @@ export const billingRouter = t.router({
   }),
 });
 
-export { stripe, STRIPE_WEBHOOK_SECRET };
+export { STRIPE_WEBHOOK_SECRET };

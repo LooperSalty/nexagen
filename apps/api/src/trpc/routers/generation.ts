@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { t, protectedProcedure } from '../router.js';
+import { t, protectedProcedure } from '../trpc.js';
 import { GenerationStatus } from '@nexagen/shared';
 
 interface StoredProgress {

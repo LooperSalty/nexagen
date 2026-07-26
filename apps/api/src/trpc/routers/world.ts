@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { t, publicProcedure, protectedProcedure } from '../router.js';
+import { t, publicProcedure, protectedProcedure } from '../trpc.js';
 import { terrainQueue, creatureQueue, narrativeQueue } from '../../lib/queue.js';
 import { GenerationStatus } from '@nexagen/shared';
 
